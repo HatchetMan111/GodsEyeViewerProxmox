@@ -1,0 +1,27 @@
+[Unit]
+Description=God's Eye View – 3D-Globe-Intelligence-Konsole (Vite)
+Documentation=https://github.com/bilawalsidhu/gods-eye-view
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gev
+Group=gev
+WorkingDirectory=/opt/gods-eye-view
+EnvironmentFile=/opt/gods-eye-view/.env
+Environment=NODE_ENV=development
+ExecStart=/usr/bin/npm run dev -- --host 0.0.0.0 --port 4173 --strictPort
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gods-eye-view
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/gods-eye-view
+
+[Install]
+WantedBy=multi-user.target
