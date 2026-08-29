@@ -165,6 +165,7 @@ print_banner() {
 command -v qm >/dev/null 2>&1 || die "'qm' nicht gefunden – das Script muss auf einem Proxmox-VE-Host laufen."
 command -v wget >/dev/null 2>&1 || command -v curl >/dev/null 2>&1 || die "Weder 'wget' noch 'curl' gefunden."
 command -v python3 >/dev/null 2>&1 || die "'python3' nicht gefunden (auf PVE-Hosten Standard)."
+command -v qemu-img >/dev/null 2>&1 || die "'qemu-img' nicht gefunden (Bestandteil von pve-qemu-kvm)."
 
 pvesm status >/dev/null 2>&1 || die "Storage-Status nicht abrufbar (pvesm status fehlgeschlagen)."
 pvesm status | awk '{print $1}' | grep -qx "$STORAGE" || die "Storage '$STORAGE' existiert nicht. Verfügbare Storages: $(pvesm status | awk 'NR>1{printf "%s ", $1}')"
@@ -437,7 +438,7 @@ qm create "$VMID" \
   --agent enabled=1,fstrim_cloned_disks=1 \
   --onboot "$ONBOOT" \
   --net0 "virtio,bridge=${BRIDGE}${VLAN:+,tag=$VLAN},firewall=${PVE_FIREWALL}" \
-  --serial0 socket --vga serial \
+  --serial0 socket --vga serial0 \
   --scsihw virtio-scsi-pci
 
 info "Importiere Disk-Image in Storage '$STORAGE'…"
@@ -448,7 +449,16 @@ DISK_REF="$(qm config "$VMID" | awk '/^unused[0-9]+:/{print $2}' | tail -n1)"
 qm set "$VMID" --scsi0 "$DISK_REF" --boot order=scsi0
 
 info "Erweitere Disk auf ${DISK_GB} GB…"
-qm disk resize "$VMID" scsi0 "${DISK_GB}G" >/dev/null
+IMG_BYTES="$(qemu-img info --output=json "$WORKDIR/$IMG_NAME" \
+  | python3 -c 'import json,sys; print(int(json.load(sys.stdin)["virtual-size"]))')"
+DISK_BYTES=$((DISK_GB * 1024 * 1024 * 1024))
+DELTA_BYTES=$((DISK_BYTES - IMG_BYTES))
+if (( DELTA_BYTES > 0 )); then
+  DELTA_GB=$(((DELTA_BYTES + 1024 ** 3 - 1) / 1024 ** 3))
+  qm disk resize "$VMID" scsi0 "+${DELTA_GB}G" >/dev/null
+else
+  warn "Angeforderte Größe ${DISK_GB} GB ≤ Image-Größe ($((IMG_BYTES / 1024 ** 3)) GB) – Disk bleibt auf Image-Größe."
+fi
 
 qm set "$VMID" --ide2 "${CIDATA_PATH},media=cdrom" \
   --agent enabled=1,fstrim_cloned_disks=1 \
