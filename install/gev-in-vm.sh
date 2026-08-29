@@ -65,6 +65,8 @@ fi
 : "${GEV_DIR:=/opt/gods-eye-view}"
 : "${GEV_USER:=gev}"
 : "${APP_REPO_RAW:=https://raw.githubusercontent.com/HatchetMan111/GodsEyeViewerProxmox/main}"
+: "${GEV_RATELIMIT_GOOGLE_PER_MIN:=60}"   # 0 = unbegrenzt
+: "${GEV_RATELIMIT_OPENAI_PER_MIN:=30}"   # 0 = unbegrenzt
 
 [[ $(id -u) -eq 0 ]] || die "Bitte als root ausführen."
 
@@ -162,8 +164,8 @@ else
 fi
 if [[ -n ${OPENSKY_CLIENT_ID:-} ]]; then set_env_kv OPENSKY_CLIENT_ID "$OPENSKY_CLIENT_ID"; fi
 if [[ -n ${OPENSKY_CLIENT_SECRET:-} ]]; then set_env_kv OPENSKY_CLIENT_SECRET "$OPENSKY_CLIENT_SECRET"; fi
-if [[ -n ${GEV_RATELIMIT_GOOGLE_PER_MIN:-} ]]; then set_env_kv GEV_RATELIMIT_GOOGLE_PER_MIN "$GEV_RATELIMIT_GOOGLE_PER_MIN"; fi
-if [[ -n ${GEV_RATELIMIT_OPENAI_PER_MIN:-} ]]; then set_env_kv GEV_RATELIMIT_OPENAI_PER_MIN "$GEV_RATELIMIT_OPENAI_PER_MIN"; fi
+set_env_kv GEV_RATELIMIT_GOOGLE_PER_MIN "$GEV_RATELIMIT_GOOGLE_PER_MIN"
+set_env_kv GEV_RATELIMIT_OPENAI_PER_MIN "$GEV_RATELIMIT_OPENAI_PER_MIN"
 chmod 600 "$GEV_DIR/.env"
 
 if [[ -z ${GOOGLE_MAPS_API_KEY:-} ]] && ! grep -q '^GOOGLE_MAPS_API_KEY=.\+' "$GEV_DIR/.env"; then

@@ -102,13 +102,40 @@ zeigt es nur Status und URL. Neu aufsetzen mit `RECREATE=true`.
 | `TOMTOM_API_KEY` | 🟡 Echter Live-Traffic (sonst Simulation) |
 | `CESIUM_ION_TOKEN` | 🟡 Bing-Imagery/World-Terrain-Stacks |
 | `OPENSKY_AUTH_MODE` / `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` | 🟢 Flüge laufen anonym (`anon`), OAuth optional |
-| `GEV_RATELIMIT_GOOGLE_PER_MIN` / `GEV_RATELIMIT_OPENAI_PER_MIN` | Per-IP-Rate-Limits der Key-Proxies |
+| `GEV_RATELIMIT_GOOGLE_PER_MIN` / `GEV_RATELIMIT_OPENAI_PER_MIN` | `60` / `30` | Per-IP-Rate-Limits der Key-Proxies (**default an**, `0` = unbegrenzt) |
 
 > **Sicherheit:** Der Vite-Server bindet an `0.0.0.0` und brokered deine Keys
 > serverseitig — jeder im LAN kann dann Quota verbrauchen. Setze im Heimnetz
 > idealerweise `GEV_RATELIMIT_*` und provider-seitige Budget-Limits (siehe
 > SECURITY.md des Upstream-Repos). `GOOGLE_MAPS_API_KEY`/`CESIUM_ION_TOKEN`
 > sind bewusst client-sichtbar — beim Provider einschränken.
+
+### Google-Maps-Limit & Schutz
+
+Google zählt beim photorealistischen 3D-Glob **Sessions** („Root-Tileset-Requests"),
+keine einzelnen Tiles:
+
+| | |
+|---|---|
+| Gratis | **1.000 Sessions/Monat** |
+| Danach | ~6 $ pro 1.000 Sessions (US-Preis, je nach Region) |
+| 1 Session | 1 voller Seiten-Reload, gilt bis zu **~3 h Rendering** — Zoomen/Layer/Cockpit kostet nichts Extra |
+
+1.000 Sessions ≈ **~33 Glob-Aufrufe pro Tag** — Solo-Nutzung läuft real nie ins
+Limit. Kritisch sind nur ständige Reloads (Skripte/Bots) oder viele gleichzeitige
+Nutzer am selben Key.
+
+**Was der Installer automatisch macht:** Per-IP-Rate-Limits der App-Proxies
+aktiv (`GEV_RATELIMIT_GOOGLE_PER_MIN=60`, `GEV_RATELIMIT_OPENAI_PER_MIN=30`,
+per Env änderbar, `0` = aus). Das schützt die serverseitig brokered Endpunkte
+(Places/Realtime), **nicht** die 3D-Tile-Sessions — die laufen direkt
+Browser → Google.
+
+**Harte Obergrenze setzt nur Google Cloud:**
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services → Quotas** → `Map Tiles API` → Limit für *Root Tileset Requests* senken (z. B. auf ein Tagesmaximum)
+2. **Billing → Budgets & Alerts** → Budget + Alarm (z. B. 5 $) → nie mehr als geplant zahlen
+3. Key einschränken: **APIs & Services → Credentials** → HTTP-Referrer `http://<VM-IP>:4173/*`
 
 ---
 

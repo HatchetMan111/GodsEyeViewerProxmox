@@ -67,8 +67,8 @@ TOMTOM_API_KEY="${TOMTOM_API_KEY:-}"
 OPENSKY_AUTH_MODE="${OPENSKY_AUTH_MODE:-}"
 OPENSKY_CLIENT_ID="${OPENSKY_CLIENT_ID:-}"
 OPENSKY_CLIENT_SECRET="${OPENSKY_CLIENT_SECRET:-}"
-GEV_RATELIMIT_GOOGLE_PER_MIN="${GEV_RATELIMIT_GOOGLE_PER_MIN:-}"
-GEV_RATELIMIT_OPENAI_PER_MIN="${GEV_RATELIMIT_OPENAI_PER_MIN:-}"
+GEV_RATELIMIT_GOOGLE_PER_MIN="${GEV_RATELIMIT_GOOGLE_PER_MIN:-60}"   # 0 = unbegrenzt
+GEV_RATELIMIT_OPENAI_PER_MIN="${GEV_RATELIMIT_OPENAI_PER_MIN:-30}"   # 0 = unbegrenzt
 
 DEBIAN_IMAGE_URL="${DEBIAN_IMAGE_URL:-https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2}"
 DEBIAN_IMAGE_SHA512SUMS="${DEBIAN_IMAGE_SHA512SUMS:-https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS}"
@@ -153,8 +153,14 @@ print_banner() {
   echo "  App-Logs (in VM) : journalctl -u gods-eye-view -f"
   echo "  Install-Log (VM) : /var/log/gods-eye-view-installer.log"
   echo "  Host-Log         : ${LOGFILE}"
-  [[ -n $GOOGLE_MAPS_API_KEY ]] || echo -e "\e[1;33m  ⚠ Ohne GOOGLE_MAPS_API_KEY lädt der 3D-Globe nicht – Key nachtragen:\e[0m"
-  [[ -n $GOOGLE_MAPS_API_KEY ]] || echo "     Key in /opt/gods-eye-view/.env setzen, dann: systemctl restart gods-eye-view"
+  echo "  Quota-Schutz     : Google-Proxy ≤ ${GEV_RATELIMIT_GOOGLE_PER_MIN} Req/Min/IP · OpenAI-Proxy ≤ ${GEV_RATELIMIT_OPENAI_PER_MIN} Req/Min/IP (0 = aus)"
+  if [[ -n $GOOGLE_MAPS_API_KEY ]]; then
+    echo "  Google-Limit     : 1.000 3D-Tile-Sessions/Monat gratis (1 Reload ≈ 1 Session, ~3 h je Session)"
+    echo "                     Hart drosseln in GCP: APIs & Services → Quotas → Map Tiles API + Budget-Alarm"
+  else
+    echo -e "\e[1;33m  ⚠ Ohne GOOGLE_MAPS_API_KEY lädt der 3D-Globe nicht – Key nachtragen:\e[0m"
+    echo "     Key in /opt/gods-eye-view/.env setzen, dann: systemctl restart gods-eye-view"
+  fi
   echo "======================================================================"
 }
 
